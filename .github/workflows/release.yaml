@@ -1,3 +1,4 @@
+---
 name: Release
 
 on:
@@ -6,29 +7,50 @@ on:
       - "main"
 
 jobs:
-  release:
-      name: Release
-      runs-on: ubuntu-latest
+  build:
+    name: Release ${{ matrix.release }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        release: ["release", "release-cross"]
 
-      steps:
-        - name: Checkout
-          uses: actions/checkout@v3
-          with:
-            fetch-depth: 0
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
-        - name: Set up Go
-          uses: actions/setup-go@v3
-          with:
-            go-version-file: go.mod
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version-file: go.mod
 
-        - name: Set up QEMU
-          uses: docker/setup-qemu-action@v2
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
 
-        - name: Set up Docker Buildx
-          uses: docker/setup-buildx-action@v2
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
 
-        - name: GoReleaser
-          run: make release
-          env:
-            RELEASE: true
-            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build ${{ matrix.release }}
+        run: make ${{ matrix.release }}
+        env:
+          RELEASE: true
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  # manifest:
+  #   runs-on: ubuntu-latest
+  #   name: Create and push manifest images
+  #   needs: build
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v3
+  #       with:
+  #         fetch-depth: 0
+  #     - name: 'Get tag'
+  #       id: previoustag
+  #       uses: WyriHaximus/github-action-get-previous-tag@v1
+  #     - name: manifest
+  #       uses: Noelware/docker-manifest-action@master
+  #       with:
+  #         inputs: jlehtimaki/archwayd:${{ steps.previoustag.outputs.tag }}
+  #         images: jlehtimaki/archwayd:${{ steps.previoustag.outputs.tag }}-amd64,jlehtimaki/archwayd:${{ steps.previoustag.outputs.tag }}-arm64v8
+  #         push: true
